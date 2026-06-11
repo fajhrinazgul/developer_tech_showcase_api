@@ -47,6 +47,10 @@ Akses repositori [developer_tech_showcase_api](https://github.com/fajhrinazgul/d
 cd developer_tech_showcase_api
 python -m venv venv
 source venv/bin/activate  # Untuk Windows: venv\Scripts\activate
+
+# Create DB
+createdb -U your_username developer_tech_showcase
+
 pip install -r requirements.txt
 python manage.py makemigrations users projects notifications
 python manage.py migrate
