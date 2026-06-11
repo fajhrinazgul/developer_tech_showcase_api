@@ -3,29 +3,32 @@ from .models import User, Follow, EmailActivation
 from django.utils.translation import gettext_lazy as _
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.core.mail import send_mail
-from projects.models import Comment
+from projects.models import Comment 
 
 class UserSerializer(serializers.ModelSerializer):
     followers_count = serializers.IntegerField(source="followers.count", read_only=True)
     following_count = serializers.IntegerField(source="following_set.count", read_only=True)
     projects_count = serializers.IntegerField(source="projects.count", read_only=True)
     total_comments_received = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField()
     
     class Meta:
         model = User
         fields = ["id", "username", "first_name", "last_name", "email", "bio",
                   "avatar", "github_url", "linkedin_url", "website_url",
                   "followers_count", "following_count", "projects_count", "total_comments_received",
-                  "date_joined"]
+                  "date_joined", "is_following"]
         read_only_fields = ["username", "email"]
     
     def get_total_comments_received(self, obj):
-        count = 0
-        projects = obj.projects.all()
-        for project in projects:
-            c = Comment.objects.filter(project=project).count()
-            count += c
-        return count
+        # PERBAIKAN: Hitung total komentar langsung lewat relasi author proyek (Hanya 1 Query lambat jadi instan!)
+        return Comment.objects.filter(project__author=obj).count()
+    
+    def get_is_following(self, obj):
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated:
+            return Follow.objects.is_following(follower=request.user, following=obj)
+        return False
 
 
 class FollowSerializer(serializers.ModelSerializer):

@@ -1,41 +1,44 @@
-from channels.db import database_sync_to_async
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from urllib.parse import parse_qs
+from channels.db import database_sync_to_async
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+import asyncio
+from django.db import close_old_connections
 
 User = get_user_model()
 
 @database_sync_to_async
 def get_user_from_token(token_key):
     try:
-        access_token = AccessToken(token_key)
-        username = access_token['username']
-        return User.objects.get(username=username)
-    except Exception:
-        # Jika token expired atau invalid, kembalikan None
-        return None
+        # Validate and decode the access token using SimpleJWT
+        validated_token = AccessToken(token_key)
+        user_id = validated_token['username']
+        return User.objects.get(username=user_id)
+    except (InvalidToken, TokenError, User.DoesNotExist):
+        return AnonymousUser()
 
 class JWTAuthMiddleware:
     def __init__(self, inner):
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        # 1. Ambil query string
+        # Hapus close_old_connections di awal untuk mempercepat HTTP router
         query_string = scope.get("query_string", b"").decode("utf-8")
         query_params = parse_qs(query_string)
+        token = query_params.get("access_token", [None])[0]
         
-        # 2. Ambil token (parse_qs mengembalikan list, ambil index ke-0)
-        token_list = query_params.get("access_token")
-        token = token_list[0] if token_list else None
+        scope["user"] = AnonymousUser()
         
-        # 3. Validasi User
-        user = AnonymousUser()
         if token:
-            found_user = await get_user_from_token(token)
-            if found_user:
-                user = found_user
+            try:
+                # Jangan gunakan timeout terlalu singkat jika DB sedang sibuk
+                user = await get_user_from_token(token)
+                if user:
+                    scope["user"] = user
+            except Exception as e:
+                print(f"Auth Error: {e}")
         
-        # 4. SET scope['user'] (PENTING: Jangan sampai KeyError)
-        scope["user"] = user
+        # Panggil inner app
         return await self.inner(scope, receive, send)

@@ -46,7 +46,7 @@ class ProjectListCreateView(generics.ListCreateAPIView):
                 else:
                     return Project.objects.filter(author__username=author_param, is_published=True)
             else:
-                return Project.objects.none()
+                return Project.objects.filter(author__username=author_param, is_published=True)
 
         if user.is_authenticated:
             return Project.objects.filter(Q(is_published=True) | Q(author=user))

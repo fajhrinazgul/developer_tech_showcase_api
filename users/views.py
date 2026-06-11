@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 load_dotenv()
+from django.conf import settings
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework import status
@@ -28,7 +29,7 @@ class UserListView(generics.ListAPIView):
 class UserDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    permission_classes = [IsOwnerOrAdminOrReadOnly]
+    permission_classes = [IsOwnerOrAdminOrReadOnly, permissions.IsAuthenticatedOrReadOnly]
     lookup_field = "username"
 
 
@@ -120,76 +121,3 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = os.getenv("LOGIN_CALLBACK_URL")
     client_class = OAuth2Client
-    
-    def post(self, request, *args, **kwargs):
-        # 1. Panggil logika login asli (memverifikasi token Google)
-        response = super().post(request, *args, **kwargs)
-        
-        # 2. Cek apakah login berhasil (response status 200)
-        if response.status_code == 200:
-            access_token = response.data.get('access')
-            refresh_token = response.data.get('refresh')
-            print(response.data)
-            print(access_token)
-            # 3. Set Access Token ke Cookie
-            if access_token:
-                response.set_cookie(
-                    key="access_token",
-                    value=refresh_token,
-                    httponly=True,
-                    secure=False,
-                    samesite='Lax',
-                    path="/",
-                    max_age=3600 * 24 * 7,
-                )
-
-            # 4. Set Refresh Token ke Cookie
-            if refresh_token:
-                response.set_cookie(
-                    key="refresh_token",
-                    value=refresh_token,
-                    httponly=True,
-                    secure=False,
-                    samesite='Lax',
-                    path="/",
-                    max_age=3600 * 24 * 7,
-                )
-            
-        return response
-
-
-
-class CookieTokenObtainPairView(TokenObtainPairView):
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        
-        access_token = response.data.get("access")
-        refresh_token = response.data.get("refresh")
-        
-        if access_token:
-            response.set_cookie(
-                key="access_token",
-                value=access_token,
-                httponly=True,
-                secure=False,
-                samesite='Lax',
-                path="/",
-                max_age=3600 * 24 * 7,
-            )
-            response.set_cookie(
-                key="refresh_token",
-                value=refresh_token,
-                httponly=True,
-                secure=False,
-                samesite='Lax',
-                path="/",
-                max_age=3600 * 24 * 7,
-            )
-        return response
-
-
-def logout_user(request):
-    response = Response({"message": "Logout successful"})
-    response.delete_cookie("token")
-    response.delete_cookie("refresh")
-    return response

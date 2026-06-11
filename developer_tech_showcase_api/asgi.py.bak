@@ -1,21 +1,3 @@
-# """
-# ASGI config for developer_tech_showcase_api project.
-
-# It exposes the ASGI callable as a module-level variable named ``application``.
-
-# For more information on this file, see
-# https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
-# """
-
-# import os
-
-# from django.core.asgi import get_asgi_application
-
-# os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'developer_tech_showcase_api.settings')
-
-# application = get_asgi_application()
-
-
 import os
 import django # 1. Import django terlebih dahulu
 from django.core.asgi import get_asgi_application
@@ -38,9 +20,11 @@ from notifications.middleware import JWTAuthMiddleware
 # 6. Jalankan konfigurasi ProtocolTypeRouter
 application = ProtocolTypeRouter({
     "http": django_asgi_app, # Gunakan instance yang di-load duluan
-    "websocket": JWTAuthMiddleware(
+    "websocket": AllowedHostsOriginValidator(
+        JWTAuthMiddleware(
             URLRouter(
                 notifications.routing.websocket_urlpatterns
             )
         )
+    )
 })

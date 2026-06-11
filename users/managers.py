@@ -3,9 +3,6 @@ from django.utils.translation import gettext_lazy as _
 from django.db import models
 
 class UserManager(BaseUserManager):
-    def get_queryset(self):
-        return super().get_queryset().prefetch_related("followers", "following")
-    
     def create_user(self, first_name, last_name, username, email, password, **extra_fields):
         """
         Create and save a user with the given email and password.
