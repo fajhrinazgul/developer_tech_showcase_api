@@ -55,7 +55,7 @@ daphne developer_tech_showcase_api.asgi:application
 
 ### 2. Inisialisasi Client Engine
 
-Akses repositori [developer_tech_showcase_api](https://github.com/fajhrinazgul/developer_tech_showcase), lalu jalankan perintah:
+Akses repositori [developer_tech_showcase](https://github.com/fajhrinazgul/developer_tech_showcase), lalu jalankan perintah:
 
 ```bash
 npm install
